@@ -13,10 +13,14 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
+    - name: Set up .NET Runtime
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
     - name: Download Minecraft Console Client
       run: |
-        curl -fsSL https://mccteam.github.io/install.sh | sh
-        mv mcc MinecraftClient
+        curl -fsSL https://github.io | sh
 
     - name: Launch Free Macro Bot
       run: |
