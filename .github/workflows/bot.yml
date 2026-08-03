@@ -13,15 +13,11 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Set up .NET Runtime
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-
     - name: Download Minecraft Console Client
       run: |
-        curl -fsSL https://github.io | sh
+        wget -q https://github.com
+        chmod +x MinecraftClient-Linux-x64
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./MinecraftClient-Linux-x64 "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
