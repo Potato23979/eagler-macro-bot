@@ -1,0 +1,19 @@
+name: 24/7 Eaglercraft Macro Player
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 */6 * * *'
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+    - name: Download Minecraft Console Client
+      run: |
+        wget https://github.com
+        chmod +x MinecraftClient-Linux-x64
+    - name: Launch Free Macro Bot
+      run: |
+        ./MinecraftClient-Linux-x64 "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
