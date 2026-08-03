@@ -1,0 +1,8 @@
+/register PotatoBotPassword77! PotatoBotPassword77!
+move forward
+wait 2
+jump
+wait 1
+move back
+wait 2
+loop
