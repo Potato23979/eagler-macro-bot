@@ -15,7 +15,7 @@ jobs:
 
     - name: Download Minecraft Console Client
       run: |
-        curl -L -o MinecraftClient-Linux-x64 https://github.com/MCCteam/Minecraft-Console-Client/releases/download/1.21.0/MinecraftClient-Linux-x64
+        curl -L -o MinecraftClient-Linux-x64 https://github.com/MCCteam/Minecraft-Console-Client/releases/download/1.21.0/MinecraftClient
         chmod +x MinecraftClient-Linux-x64
 
     - name: Launch Free Macro Bot
