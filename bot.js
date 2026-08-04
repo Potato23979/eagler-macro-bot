@@ -50,15 +50,21 @@ function createBotInstance() {
 
 function executeDefensiveCombat(bot) {
     if (!bot || !combatTarget) return;
-    if (combatTarget.health  16) {
+    
+    const distance = bot.entity.position.distanceTo(combatTarget.position);
+    if (combatTarget.health <= 0 || distance > 16) {
         console.log("Threat neutralized or lost. Returning to survival loop.");
         combatTarget = null;
         bot.pathfinder.setGoal(null);
         survivalCycleLoop(bot);
         return;
     }
+    
     bot.lookAt(combatTarget.position.offset(0, 1.6, 0));
-    if (bot.health  executeDefensiveCombat(bot), 300);
+    
+    if (bot.health  {
+        executeDefensiveCombat(bot);
+    }, 300);
 }
 
 async function survivalCycleLoop(bot) {
@@ -160,4 +166,3 @@ function findAndChopTrees(bot) {
 }
 
 createBotInstance();
-
