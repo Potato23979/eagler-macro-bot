@@ -1,6 +1,5 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
-const eaglercraft = require('mineflayer-eaglercraft');
 const GoalLookAtBlock = goals.GoalLookAtBlock;
 const GoalXZ = goals.GoalXZ;
 
@@ -9,14 +8,16 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching True Eaglercraft Compatible Network Agent...");
+    console.log("Launching Native Websocket Eaglercraft Agent...");
     
     const bot = mineflayer.createBot({
-        host: 'Potatos-andFries.Eagler.Host',
-        username: 'Fredbot', // CHANGED: Updated your bot's name to Fredbot
-        version: '1.12.2',
-        transport: 'websocket',
-        eaglercraft: true
+        // Changes the host to pass raw browser packets directly down the line
+        connect: (client) => {
+            const WebSocket = require('ws');
+            return new WebSocket('ws://Potatos-andFries.Eagler.Host');
+        },
+        username: 'Fredbot', 
+        version: '1.12.2'
     });
 
     bot.loadPlugin(pathfinder);
@@ -47,7 +48,7 @@ function createBotInstance() {
     });
 
     bot.on('end', () => {
-        console.log("Disconnected. Cycling connection protocols in 30 seconds...");
+        console.log("Disconnected. Reconnecting in 30 seconds...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
@@ -176,4 +177,3 @@ async function mainAILoop(bot) {
 }
 
 createBotInstance();
-
