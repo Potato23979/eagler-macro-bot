@@ -19,8 +19,4 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        # Use lowercase system environment markers to force standard 1.12.2 protocols
-        export mcc_general_mcversion="1.12.2"
-        export mcc_general_accounttype="Offline"
-        
-        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
+        ./MinecraftClient "MacroBot" "1.12.2" "Potatos-andFries.Eagler.Host" "tasks.txt"
