@@ -4,7 +4,7 @@ const collectBlock = require('mineflayer-collectblock').plugin;
 const GoalXZ = goals.GoalXZ;
 
 function createBotInstance() {
-    console.log("Launching Clean Eaglercraft Survival AI...");
+    console.log("Launching Optimized Lightweight Survival AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -16,7 +16,7 @@ function createBotInstance() {
     bot.loadPlugin(collectBlock);
 
     bot.on('spawn', () => {
-        console.log("SUCCESS: Autonomous player initialized.");
+        console.log("SUCCESS: Bot successfully logged into the server.");
         bot.physics.enabled = true;
         
         setTimeout(() => {
@@ -31,7 +31,7 @@ function createBotInstance() {
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected! Restarting instance...");
+        console.log("Bot disconnected. Reconnecting in 5 seconds...");
         setTimeout(() => createBotInstance(), 5000);
     });
 }
@@ -113,32 +113,39 @@ function findAndChopTrees(bot) {
     if (!bot || !bot.collectBlock) return;
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
+    
+    // Smooth navigation rules to stop pathfinding crashes
     movements.canDig = false;
+    movements.allowSprinting = false; 
     bot.pathfinder.setMovements(movements);
 
-    const targets = bot.findBlocks({
+    // FIXED: Shrunk distance to 15 blocks so the bot only calculates one easy path at a time
+    const target = bot.findBlock({
         matching: (block) => {
             const name = block.name.toLowerCase();
             return name === 'log' || name === 'log2' || name.includes('wood') || name.includes('log');
         },
-        maxDistance: 32,
-        count: 1
+        maxDistance: 15
     });
 
-    if (targets.length > 0) {
-        const targetBlock = bot.blockAt(targets);
-        bot.collectBlock.collect(targetBlock, (err) => {
-            setTimeout(() => survivalCycleLoop(bot), 2000);
+    if (target) {
+        console.log(`Target locked onto nearby log at: ${target.position}`);
+        bot.collectBlock.collect(target, (err) => {
+            if (err) console.log(`Collection error: ${err.message}`);
+            setTimeout(() => survivalCycleLoop(bot), 1500);
         });
     } else {
+        console.log("No trees in immediate 15-block area. Walking randomly to find wood...");
         const currentPos = bot.entity.position;
-        const randomX = currentPos.x + (Math.floor(Math.random() * 25) - 12);
-        const randomZ = currentPos.z + (Math.floor(Math.random() * 25) - 12);
+        const randomX = currentPos.x + (Math.floor(Math.random() * 15) - 7);
+        const randomZ = currentPos.z + (Math.floor(Math.random() * 15) - 7);
+        
         bot.pathfinder.setGoal(new GoalXZ(randomX, randomZ));
         bot.once('goal_reached', () => {
-            setTimeout(() => survivalCycleLoop(bot), 2000);
+            setTimeout(() => survivalCycleLoop(bot), 1500);
         });
     }
 }
 
 createBotInstance();
+
