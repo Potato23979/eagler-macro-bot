@@ -6,10 +6,9 @@ const GoalXZ = goals.GoalXZ;
 let travelGoalX = null;
 let travelGoalZ = null;
 let activeLoopTimeout = null;
-let combatTarget = null;
 
 function createBotInstance() {
-    console.log("Launching Comprehensive Survival and Defense AI Agent...");
+    console.log("Launching Pure Progression Crafting AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -26,7 +25,6 @@ function createBotInstance() {
         bot.clearControlStates();
         travelGoalX = null; 
         travelGoalZ = null;
-        combatTarget = null;
 
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -39,50 +37,17 @@ function createBotInstance() {
         }, 3000);
     });
 
-    bot.on('health', () => {
-        if (combatTarget) return; 
-        
-        const attacker = bot.nearestEntity((entity) => {
-            return (entity.type === 'mob' || entity.type === 'player') && entity.username !== bot.username;
-        });
-
-        if (attacker && bot.entity.position.distanceTo(attacker.position) < 5) {
-            console.log("ALERT: Under attack! Engaging self-defense sequence...");
-            combatTarget = attacker;
-            executeDefensiveCombat(bot);
-        }
-    });
-
     bot.on('end', () => {
         console.log("Bot disconnected. Waiting 30 seconds to bypass bans...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
-        combatTarget = null;
         setTimeout(() => createBotInstance(), 30000);
     });
 }
 
-function executeDefensiveCombat(bot) {
-    if (!bot || !combatTarget) return;
-    
-    const distance = bot.entity.position.distanceTo(combatTarget.position);
-    
-    if (combatTarget.health <= 0 || distance > 16) {
-        console.log("Threat neutralized. Returning to normal cycles.");
-        combatTarget = null;
-        bot.pathfinder.setGoal(null);
-        mainAILoop(bot);
-        return;
-    }
-    
-    bot.lookAt(combatTarget.position.offset(0, 1.6, 0));
-    
-    if (bot.health  executeDefensiveCombat(bot), 300);
-}
-
 async function mainAILoop(bot) {
-    if (!bot || !bot.pathfinder || combatTarget) return; 
+    if (!bot || !bot.pathfinder) return;
     
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
@@ -92,6 +57,7 @@ async function mainAILoop(bot) {
 
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
+    // Scan inventory holdings
     const items = bot.inventory.items();
     const logs = items.filter(item => item.name === 'log' || item.name === 'log2' || item.name.includes('log'));
     const planks = items.find(item => item.name.includes('planks'));
@@ -99,6 +65,7 @@ async function mainAILoop(bot) {
     const tableItem = items.find(item => item.name === 'crafting_table');
     const pickaxe = items.find(item => item.name.includes('pickaxe'));
 
+    // STAGE 1: Refine Logs into Planks
     if (logs.length > 0 && (!planks || planks.count < 8) && !pickaxe) {
         console.log("Refining raw wood logs into planks...");
         const targetPlankId = mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id;
@@ -108,22 +75,25 @@ async function mainAILoop(bot) {
         return;
     }
 
+    // STAGE 2: Craft a Crafting Table block inside inventory
     if (planks && planks.count >= 4 && !tableItem && !pickaxe) {
-        console.log("Assembling Crafting Table unit...");
+        console.log("Crafting an official Crafting Table block...");
         const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null);
         if (tableRecipe) { try { await bot.craft(tableRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
         return;
     }
 
+    // STAGE 3: Craft Handles (Sticks)
     if (planks && planks.count >= 2 && !sticks && !pickaxe) {
-        console.log("Shaping wooden handles...");
+        console.log("Crafting sticks...");
         const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null);
         if (stickRecipe) { try { await bot.craft(stickRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
         return;
     }
 
+    // STAGE 4: Place Crafting Table on ground and assemble a Wooden Pickaxe tool
     if (tableItem && planks && sticks && !pickaxe) {
         const groundBlock = bot.findBlock({
             matching: (block) => block.name === 'grass' || block.name === 'grass_block' || block.name === 'dirt' || block.name === 'stone',
@@ -143,8 +113,9 @@ async function mainAILoop(bot) {
                         const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null);
                         if (pickaxeRecipe) {
                             await bot.craft(pickaxeRecipe, 1, placedTable);
-                            bot.chat("Look! I crafted a Wooden Pickaxe completely autonomously!");
+                            bot.chat("Successfully gathered wood and crafted a Wooden Pickaxe completely autonomously!");
                             
+                            // Mine the table back up to move on
                             setTimeout(() => {
                                 bot.dig(placedTable).then(() => mainAILoop(bot)).catch(() => mainAILoop(bot));
                             }, 2000);
@@ -155,11 +126,12 @@ async function mainAILoop(bot) {
                 }, 2000);
                 return;
             } catch (err) {
-                console.log(`Crafting placement error: ${err.message}`);
+                console.log(`Crafting placement failure: ${err.message}`);
             }
         }
     }
 
+    // STAGE 5: Scan and Mine Wood Logs (Only if inventory criteria aren't ready)
     if (logs.length === 0 && (!planks || planks.count < 8) && !pickaxe) {
         const treeBlock = bot.findBlock({
             matching: (block) => {
@@ -183,16 +155,7 @@ async function mainAILoop(bot) {
                     
                     await bot.lookAt(treeBlock.position.offset(0.5, 0.5, 0.5));
                     await bot.dig(treeBlock);
-                    
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    const droppedItem = bot.nearestEntity((entity) => {
-                        return entity.type === 'object' && bot.entity.position.distanceTo(entity.position) < 4;
-                    });
-
-                    if (droppedItem) {
-                        bot.pathfinder.setGoal(new GoalXZ(droppedItem.position.x, droppedItem.position.z));
-                        await new Promise(resolve => bot.once('goal_reached', resolve));
-                    }
+                    console.log("Harvest complete.");
                 } catch (err) {
                     console.log(`Mining skipped: ${err.message}`);
                 }
@@ -202,6 +165,7 @@ async function mainAILoop(bot) {
         }
     }
 
+    // STAGE 6: Continuous Long-Distance Travel Expedition
     if (travelGoalX === null || travelGoalZ === null) {
         const currentPos = bot.entity.position;
         const angle = Math.random() * Math.PI * 2;
