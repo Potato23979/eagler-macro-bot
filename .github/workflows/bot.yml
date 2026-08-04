@@ -15,9 +15,9 @@ jobs:
 
     - name: Download Minecraft Console Client
       run: |
-        curl -L -o MinecraftClient-Linux-x64 https://github.com/MCCteam/Minecraft-Console-Client/releases/download/1.21.0/MinecraftClient
-        chmod +x MinecraftClient-Linux-x64
+        curl -L -o MCC-Linux https://github.com/MCCTeam/Minecraft-Console-Client/releases/download/1.21.0/MinecraftClient-1.21.0-linux-x64
+        chmod +x MCC-Linux
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient-Linux-x64 "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./MCC-Linux "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
