@@ -20,10 +20,11 @@ jobs:
 
     - name: Install Minecraft Console Client
       run: |
-        dotnet tool install --global MinecraftConsoleClient.Tool || true
-        echo "export PATH=$PATH:$HOME/.dotnet/tools" >> $GITHUB_ENV
+        dotnet tool install --global MinecraftConsoleClient.Tool --version 1.21.0 || true
 
     - name: Launch Free Macro Bot
       run: |
+        $HOME/.dotnet/tools/mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+
         export PATH=$PATH:$HOME/.dotnet/tools
         mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
