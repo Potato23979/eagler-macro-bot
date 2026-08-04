@@ -19,4 +19,8 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt" "1.12.2"
+        # Inject standard lowercase system variables to lock the protocol to 1.12.2 on Linux
+        export mcc_general_mcversion="1.12.2"
+        export mcc_general_accounttype="Offline"
+        
+        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
