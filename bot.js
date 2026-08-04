@@ -1,9 +1,9 @@
 const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
-const GoalXZ = goals.GoalXZ;
+const { pathfinder, Movements } = require('mineflayer-pathfinder');
+const collectBlock = require('mineflayer-collectblock').plugin;
 
 function createBotInstance() {
-    console.log("Initializing AI navigation bot instance...");
+    console.log("Initializing Survival Gathering AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -11,70 +11,76 @@ function createBotInstance() {
         version: '1.12.2'
     });
 
-    // Inject the pathfinding AI engine into our bot
+    // Load AI logic systems into memory
     bot.loadPlugin(pathfinder);
+    bot.loadPlugin(collectBlock);
 
     bot.on('spawn', () => {
-        console.log("SUCCESS: AI bot connected to server network pipeline.");
+        console.log("SUCCESS: Survival agent active.");
         
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
-            
             setTimeout(() => {
                 bot.chat('/login PotatoBotPassword77!');
-                
                 setTimeout(() => {
-                    console.log("Activating smart free-roaming routines...");
-                    startAIExploreLoop(bot);
+                    console.log("Scanning ecosystem for resources...");
+                    findAndChopTrees(bot);
                 }, 3000);
             }, 3000);
         }, 3000);
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected! Attempting instant respawn in 5 seconds...");
-        setTimeout(() => {
-            createBotInstance();
-        }, 5000);
+        setTimeout(() => createBotInstance(), 5000);
     });
-
-    bot.on('error', (err) => console.log(`Connection Error: ${err.message}`));
 }
 
-function startAIExploreLoop(bot) {
-    if (!bot || !bot.pathfinder) return;
+function findAndChopTrees(bot) {
+    if (!bot || !bot.collectBlock) return;
 
-    // Load standard 1.12.2 block physical collision properties (solid blocks, air, water)
     const mcData = require('minecraft-data')(bot.version);
-    const defaultMovements = new Movements(bot, mcData);
+    const movements = new Movements(bot, mcData);
     
-    // SAFETY CONTROLS: Force the bot to strictly avoid falling down holes or diving into depths
-    defaultMovements.canDig = false;             // Prevents trying to break blocks to navigate
-    defaultMovements.scafoldingBlocks = [];      // Prevents using blocks to bridge across areas
-    defaultMovements.allow1by1towers = false;    // Stops the bot from building pillar stacks
-    bot.pathfinder.setMovements(defaultMovements);
+    // Safety paths config - will not leap off walls or high terrain cliffs
+    movements.canDig = false;
+    bot.pathfinder.setMovements(movements);
 
-    // Pick a completely random target destination within a 20-block walking radius from its current position
-    const currentPos = bot.entity.position;
-    const randomX = currentPos.x + (Math.floor(Math.random() * 41) - 20);
-    const randomZ = currentPos.z + (Math.floor(Math.random() * 41) - 20);
-
-    console.log(`AI calculating safe pathway vectors toward coordinates: X:${Math.floor(randomX)}, Z:${Math.floor(randomZ)}`);
-    
-    // Commands the bot to execute path calculations to reach the coordinate safely
-    bot.pathfinder.setGoal(new GoalXZ(randomX, randomZ));
-
-    // Wait until the bot completes its pathing goal, then pick a fresh set of coordinates to loop forever
-    bot.once('goal_reached', () => {
-        console.log("Destination reached cleanly. Pausing briefly before searching next safe sector...");
-        setTimeout(() => {
-            startAIExploreLoop(bot);
-        }, 4000); // Rests for 4 seconds at the destination to look completely human
+    // Look around for standard Wood Logs (log, log2 blocks matching IDs)
+    const targets = bot.findBlocks({
+        matching: (block) => block.name.includes('log') || block.name.includes('wood'),
+        maxDistance: 32,
+        count: 1
     });
+
+    if (targets.length > 0) {
+        const targetBlock = bot.blockAt(targets[0]);
+        console.log(`Target locked onto tree block at coordinates: ${targetBlock.position}`);
+        
+        // Tells the AI engine to navigate to the tree, mine it with its hand/tool, and collect the wood item
+        bot.collectBlock.collect(targetBlock, (err) => {
+            if (err) {
+                console.log(`Path blocked or target error: ${err.message}. Retrying scan...`);
+            } else {
+                console.log("Wood gathered successfully!");
+            }
+            setTimeout(() => findAndChopTrees(bot), 2000);
+        });
+    } else {
+        console.log("No visible trees nearby. Shifting coordinates to scan a new sector...");
+        // If no wood is nearby, walk slightly in a random direction to seek new forests
+        const currentPos = bot.entity.position;
+        const randomX = currentPos.x + (Math.floor(Math.random() * 21) - 10);
+        const randomZ = currentPos.z + (Math.floor(Math.random() * 21) - 10);
+        
+        bot.pathfinder.setGoal(new (require('mineflayer-pathfinder').goals.GoalXZ)(randomX, randomZ));
+        bot.once('goal_reached', () => {
+            setTimeout(() => findAndChopTrees(bot), 3000);
+        });
+    }
 }
 
 createBotInstance();
 
 setInterval(() => {
-    console.log("Keep-alive infrastructure tracking nominal.");
+    console.log("Keep-alive loop operational.");
 }, 10000);
