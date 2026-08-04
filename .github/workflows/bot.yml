@@ -17,10 +17,18 @@ jobs:
       run: |
         curl -fsSL https://mccteam.github.io/install.sh | bash
 
+    - name: Generate JSON Config Override
+      run: |
+        # Creates a modern JSON settings profile layout to skip server autodetect loops completely
+        cat << 'EOF' > MinecraftClient.json
+        {
+          "Main": {
+            "mcversion": "1.12.2",
+            "account_type": "Offline"
+          }
+        }
+        EOF
+
     - name: Launch Free Macro Bot
       run: |
-        # Inject standard lowercase system variables to lock the protocol to 1.12.2 on Linux
-        export mcc_general_mcversion="1.12.2"
-        export mcc_general_accounttype="Offline"
-        
         ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
