@@ -61,15 +61,16 @@ function mainAILoop(bot) {
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
     const treeBlock = bot.findBlock({
+        // FIXED RADAR: Explicitly maps true Minecraft log types to prevent hitting dirt or stone
         matching: (block) => {
             const name = block.name.toLowerCase();
-            return name === 'log' || name === 'log2' || name.includes('wood') || name.includes('log');
+            return name === 'log' || name === 'log2' || name === 'oak_log' || name === 'spruce_log' || name === 'birch_log' || name === 'jungle_log' || name === 'acacia_log' || name === 'dark_oak_log';
         },
         maxDistance: 25
     });
 
     if (treeBlock) {
-        console.log(`Wood spotted at: ${treeBlock.position}`);
+        console.log(`True Wood spotted at: ${treeBlock.position}`);
         travelGoalX = null; 
         travelGoalZ = null;
 
@@ -84,10 +85,8 @@ function mainAILoop(bot) {
                 await bot.dig(treeBlock);
                 console.log("Block broken! Initiating drop collection sequence...");
                 
-                // Wait 800ms for item drop gravity physics to drop the log to the ground cleanly
                 await new Promise(resolve => setTimeout(resolve, 800));
                 
-                // Track down any floating item blocks close to his location coordinates
                 const droppedItem = bot.nearestEntity((entity) => {
                     return entity.type === 'object' && bot.entity.position.distanceTo(entity.position) < 4;
                 });
