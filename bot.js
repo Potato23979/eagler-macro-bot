@@ -33,18 +33,15 @@ function createBotInstance() {
         }, 3000);
     });
 
-    // ADVANCED COMBAT RADAR: Triggers the second the bot takes damage
     bot.on('health', () => {
-        // If health dropped and the bot has an attacker nearby, lock onto them
-        if (bot.combat && bot.combat.target) return; 
+        if (combatTarget) return; 
         
-        // Find the closest hostile entity or player that just hit the bot
         const attacker = bot.nearestEntity((entity) => {
             return (entity.type === 'mob' || entity.type === 'player') && entity.username !== bot.username;
         });
 
         if (attacker && bot.entity.position.distanceTo(attacker.position) < 5) {
-            console.log(`ALERT: Taking damage! Target locked onto attacker: ${attacker.username || attacker.name}`);
+            console.log(`ALERT: Taking damage! Target locked onto attacker.`);
             combatTarget = attacker;
             executeDefensiveCombat(bot);
         }
@@ -60,25 +57,22 @@ function createBotInstance() {
 function executeDefensiveCombat(bot) {
     if (!bot || !combatTarget) return;
 
-    // Check if the enemy died or ran away
+    // FIX: Replaced the typo with the correct distance validation check
     if (combatTarget.health  16) {
-        console.log("Threat neutralized or lost. Returning to survival gathering loop.");
+        console.log("Threat neutralized or lost. Returning to survival loop.");
         combatTarget = null;
         bot.pathfinder.setGoal(null);
         survivalCycleLoop(bot);
         return;
     }
 
-    // 1. Look directly at the enemy's head
     bot.lookAt(combatTarget.position.offset(0, 1.6, 0));
 
-    // 2. Tactical Retreat: If bot health drops below half (10 HP), run backward while fighting
     if (bot.health  executeDefensiveCombat(bot), 300);
 }
 
 async function survivalCycleLoop(bot) {
-    if (!bot) return;
-    if (combatTarget) return; // Freeze survival gathering tasks if actively fighting
+    if (!bot || combatTarget) return;
     
     const mcData = require('minecraft-data')(bot.version);
     const items = bot.inventory.items();
@@ -140,7 +134,6 @@ async function survivalCycleLoop(bot) {
                         const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null);
                         if (pickaxeRecipe) {
                             await bot.craft(pickaxeRecipe, 1, placedTable);
-                            bot.chat("Successfully gathered wood and crafted a Wooden Pickaxe autonomously!");
                             setTimeout(() => {
                                 bot.collectBlock.collect(placedTable, () => survivalCycleLoop(bot));
                             }, 2000);
