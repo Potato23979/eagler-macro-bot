@@ -19,7 +19,4 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        # Turn off the Microsoft login screen natively through system settings
-        export MCC_ACCOUNT_TYPE=offline
-        
-        ./MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
