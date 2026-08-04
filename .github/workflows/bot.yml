@@ -19,7 +19,8 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        # Force the version setting down to 1.12.2 by generating an internal configuration file natively
-        echo -e "[Main]\nmcversion=1.12.2\naccount_type=Offline" > MinecraftClient.ini
+        # Force the version setting to 1.12.2 natively inside modern JSON application logic
+        export MCC_MAIN_MCVERSION="1.12.2"
+        export MCC_MAIN_ACCOUNT_TYPE="Offline"
         
         ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
