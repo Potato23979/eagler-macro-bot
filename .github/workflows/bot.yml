@@ -13,11 +13,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Download Minecraft Console Client
+    - name: Download and Unzip Minecraft Console Client
       run: |
-        wget -q -O mcc https://github.com/MCCTeam/Minecraft-Console-Client/releases/latest/download/MinecraftClient-Linux-zip-x64
-        chmod +x mcc
+        wget -q -O mcc.zip https://github.com/MCCTeam/Minecraft-Console-Client/releases/latest/download/MinecraftClient-Linux-zip-x64
+        unzip -q mcc.zip -d mcc_folder
+        chmod +x mcc_folder/MinecraftClient
 
     - name: Launch Free Macro Bot
       run: |
-        ./mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./mcc_folder/MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
