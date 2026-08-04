@@ -8,7 +8,7 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching Long-Distance Explorer AI...");
+    console.log("Launching Resource-Collecting Explorer AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -77,19 +77,30 @@ function mainAILoop(bot) {
 
         bot.once('goal_reached', async () => {
             try {
-                // FIXED: Forcefully stop all pathfinder movements and control states to let the server process the fist packets
                 bot.pathfinder.setGoal(null);
                 bot.clearControlStates();
                 
                 await bot.lookAt(treeBlock.position.offset(0.5, 0.5, 0.5));
-                
-                // Mine the block while completely frozen in place
                 await bot.dig(treeBlock);
-                console.log("Harvest complete.");
+                console.log("Block broken! Initiating drop collection sequence...");
+                
+                // FIXED: Wait 800ms for item drop gravity physics to drop the log to the ground
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // Find any dropped item entities (like dropped logs) within 4 blocks of its feet
+                const droppedItem = bot.nearestEntity((entity) => {
+                    return entity.type === 'object' && bot.entity.position.distanceTo(entity.position) < 4;
+                });
+
+                if (droppedItem) {
+                    console.log("Sucking up log drops...");
+                    // Walk directly over the floating item to collect it cleanly
+                    bot.pathfinder.setGoal(new GoalXZ(droppedItem.position.x, droppedItem.position.z));
+                    await new Promise(resolve => bot.once('goal_reached', resolve));
+                }
             } catch (err) {
-                console.log(`Mining skipped: ${err.message}`);
+                console.log(`Mining or collection skipped: ${err.message}`);
             }
-            // Wait 1 second after mining before turning movement back on
             activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1000);
         });
         return;
@@ -122,3 +133,4 @@ function mainAILoop(bot) {
 }
 
 createBotInstance();
+
