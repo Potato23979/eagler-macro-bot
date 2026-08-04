@@ -4,7 +4,7 @@ const collectBlock = require('mineflayer-collectblock').plugin;
 const GoalXZ = goals.GoalXZ;
 
 function createBotInstance() {
-    console.log("Initializing Crafting and Progression AI...");
+    console.log("Launching Fully Autonomous Exploration AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -16,7 +16,7 @@ function createBotInstance() {
     bot.loadPlugin(collectBlock);
 
     bot.on('spawn', () => {
-        console.log("SUCCESS: Progression agent active.");
+        console.log("SUCCESS: Autonomous player initialized.");
         
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -38,87 +38,99 @@ async function survivalCycleLoop(bot) {
     if (!bot) return;
     const mcData = require('minecraft-data')(bot.version);
 
-    // 1. Check inventory for raw materials
-    const logs = bot.inventory.items().filter(item => item.name.includes('log'));
-    const planks = bot.inventory.items().find(item => item.name.includes('planks'));
-    const sticks = bot.inventory.items().find(item => item.name === 'stick');
-    const pickaxe = bot.inventory.items().find(item => item.name.includes('pickaxe'));
+    // Track current inventory
+    const items = bot.inventory.items();
+    const logs = items.filter(item => item.name.includes('log'));
+    const planks = items.find(item => item.name.includes('planks'));
+    const sticks = items.find(item => item.name === 'stick');
+    const tableItem = items.find(item => item.name === 'crafting_table');
+    const pickaxe = items.find(item => item.name.includes('pickaxe'));
 
-    // 2. STAGE 1: Gather wood if we have absolutely nothing
-    if (logs.length === 0 && !planks && !pickaxe) {
-        console.log("No materials found. Scanning for raw wood...");
+    // Step 1: Chop wood if we don't have enough materials
+    if (logs.length === 0 && (!planks || planks.count < 8) && !pickaxe) {
+        console.log("Materials low. Gathering wood logs...");
         findAndChopTrees(bot);
         return;
     }
 
-    // 3. STAGE 2: If we have logs, craft them into planks (Done right inside inventory)
-    if (logs.length > 0 && !planks && !pickaxe) {
-        console.log(`Processing ${logs[0].name} into usable planks...`);
+    // Step 2: Refine logs into planks
+    if (logs.length > 0 && (!planks || planks.count < 8) && !pickaxe) {
+        console.log("Refining raw logs into planks...");
         const plankRecipe = bot.recipesFor(mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id, null, 1, null)[0];
         if (plankRecipe) {
-            try {
-                await bot.craft(plankRecipe, 1, null);
-                console.log("Crafting successful: Planks acquired.");
-            } catch (err) {
-                console.log(`Failed to refine logs: ${err.message}`);
-            }
+            try { await bot.craft(plankRecipe, 2, null); } catch (e) {}
         }
-        setTimeout(() => survivalCycleLoop(bot), 2000);
+        setTimeout(() => survivalCycleLoop(bot), 1500);
         return;
     }
 
-    // 4. STAGE 3: If we have planks, build sticks
+    // Step 3: Craft a Crafting Table if we don't have one
+    if (planks && planks.count >= 4 && !tableItem && !pickaxe) {
+        console.log("Crafting an official Crafting Table block...");
+        const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null)[0];
+        if (tableRecipe) {
+            try { await bot.craft(tableRecipe, 1, null); } catch (e) {}
+        }
+        setTimeout(() => survivalCycleLoop(bot), 1500);
+        return;
+    }
+
+    // Step 4: Craft Sticks
     if (planks && planks.count >= 2 && !sticks && !pickaxe) {
-        console.log("Assembling navigation crafting sticks...");
+        console.log("Crafting sticks...");
         const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null)[0];
         if (stickRecipe) {
-            try {
-                await bot.craft(stickRecipe, 1, null);
-                console.log("Sticks assembled.");
-            } catch (err) {
-                console.log(`Failed to craft sticks: ${err.message}`);
-            }
+            try { await bot.craft(stickRecipe, 1, null); } catch (e) {}
         }
-        setTimeout(() => survivalCycleLoop(bot), 2000);
+        setTimeout(() => survivalCycleLoop(bot), 1500);
         return;
     }
 
-    // 5. STAGE 4: If we have planks and sticks, find a crafting table to build a tool!
-    if (planks && planks.count >= 3 && sticks && !pickaxe) {
-        console.log("Searching environment for a Crafting Table block...");
-        const tableBlock = bot.findBlock({
-            matching: mcData.blocksByName.crafting_table.id,
-            maxDistance: 32
+    // Step 5: Place the Crafting Table on the ground and make tools
+    if (tableItem && planks && sticks && !pickaxe) {
+        console.log("Finding a safe spot to place our Crafting Table...");
+        
+        // Find a solid ground block right next to the bot
+        const groundBlock = bot.findBlock({
+            matching: (block) => block.name === 'grass_block' || block.name === 'dirt' || block.name === 'stone',
+            maxDistance: 3
         });
 
-        if (tableBlock) {
-            console.log("Crafting table found! Walking over to utilize station...");
-            const movements = new Movements(bot, mcData);
-            bot.pathfinder.setMovements(movements);
-            bot.pathfinder.setGoal(new GoalXZ(tableBlock.position.x, tableBlock.position.z));
-            
-            bot.once('goal_reached', async () => {
-                const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, tableBlock, 1, null)[0];
-                if (pickaxeRecipe) {
-                    try {
-                        await bot.craft(pickaxeRecipe, 1, tableBlock);
-                        console.log("SUCCESS: Wooden Pickaxe has been officially crafted!");
-                        bot.chat("Look at my shiny new Wooden Pickaxe!");
-                    } catch (err) {
-                        console.log(`Crafting station failure: ${err.message}`);
+        if (groundBlock) {
+            try {
+                // Hold the table item and place it on top of the ground block
+                await bot.equip(mcData.itemsByName.crafting_table.id, 'hand');
+                await bot.placeBlock(groundBlock, new (require('vec3'))(0, 1, 0));
+                console.log("Crafting Table placed successfully!");
+
+                setTimeout(async () => {
+                    // Find the newly placed table in the world
+                    const placedTable = bot.findBlock({ matching: mcData.blocksByName.crafting_table.id, maxDistance: 4 });
+                    if (placedTable) {
+                        const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null)[0];
+                        if (pickaxeRecipe) {
+                            await bot.craft(pickaxeRecipe, 1, placedTable);
+                            console.log("SUCCESS: Pickaxe crafted autonomously!");
+                            bot.chat("I successfully gathered resources and built a Wooden Pickaxe completely on my own!");
+                            
+                            // Break the table to pack it up and move on
+                            setTimeout(() => {
+                                bot.collectBlock.collect(placedTable, () => survivalCycleLoop(bot));
+                            }, 2000);
+                            return;
+                        }
                     }
-                }
-                setTimeout(() => survivalCycleLoop(bot), 2000);
-            });
-        } else {
-            console.log("No crafting table nearby. We need to gather more wood to craft our own table block next!");
-            findAndChopTrees(bot);
+                    survivalCycleLoop(bot);
+                }, 2000);
+                return;
+            } catch (err) {
+                console.log(`Failed placement routine: ${err.message}`);
+            }
         }
-        return;
     }
 
-    // If we already have the pickaxe, maintain survival mode by continuing to gather
-    console.log("Tool criteria met. Gathering resources to build inventory stash...");
+    // Default fallback: keep exploring/gathering
+    console.log("Maintaining status loop. Moving to gather...");
     findAndChopTrees(bot);
 }
 
@@ -135,7 +147,7 @@ function findAndChopTrees(bot) {
     });
 
     if (targets.length > 0) {
-        const targetBlock = bot.blockAt(targets[0]);
+        const targetBlock = bot.blockAt(targets);
         bot.collectBlock.collect(targetBlock, (err) => {
             setTimeout(() => survivalCycleLoop(bot), 2000);
         });
