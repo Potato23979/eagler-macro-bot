@@ -1,8 +1,9 @@
 const mineflayer = require('mineflayer');
+const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+const GoalXZ = goals.GoalXZ;
 
-// Wrap everything in a launcher function so it can be restarted instantly
 function createBotInstance() {
-    console.log("Initializing brand new bot instance...");
+    console.log("Initializing AI navigation bot instance...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -10,8 +11,11 @@ function createBotInstance() {
         version: '1.12.2'
     });
 
+    // Inject the pathfinding AI engine into our bot
+    bot.loadPlugin(pathfinder);
+
     bot.on('spawn', () => {
-        console.log("SUCCESS: Connected to server network pipeline.");
+        console.log("SUCCESS: AI bot connected to server network pipeline.");
         
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -20,52 +24,57 @@ function createBotInstance() {
                 bot.chat('/login PotatoBotPassword77!');
                 
                 setTimeout(() => {
-                    startMacroLoop(bot);
-                }, 2000);
+                    console.log("Activating smart free-roaming routines...");
+                    startAIExploreLoop(bot);
+                }, 3000);
             }, 3000);
         }, 3000);
     });
 
-    // INSTANT RECONNECT TRIGGER
-    // If the bot gets punched out, kicked, or disconnected, this triggers immediately
     bot.on('end', () => {
         console.log("Bot disconnected! Attempting instant respawn in 5 seconds...");
         setTimeout(() => {
-            createBotInstance(); // Fires up a brand new bot automatically
+            createBotInstance();
         }, 5000);
     });
 
     bot.on('error', (err) => console.log(`Connection Error: ${err.message}`));
 }
 
-function startMacroLoop(bot) {
-    // Check to ensure the bot hasn't been disconnected before executing actions
-    if (!bot || !bot.setControlState) return;
+function startAIExploreLoop(bot) {
+    if (!bot || !bot.pathfinder) return;
 
-    bot.setControlState('forward', true);
-    setTimeout(() => {
-        if (!bot.setControlState) return;
-        bot.setControlState('forward', true);
-        bot.setControlState('jump', true);
-        
+    // Load standard 1.12.2 block physical collision properties (solid blocks, air, water)
+    const mcData = require('minecraft-data')(bot.version);
+    const defaultMovements = new Movements(bot, mcData);
+    
+    // SAFETY CONTROLS: Force the bot to strictly avoid falling down holes or diving into depths
+    defaultMovements.canDig = false;             // Prevents trying to break blocks to navigate
+    defaultMovements.scafoldingBlocks = [];      // Prevents using blocks to bridge across areas
+    defaultMovements.allow1by1towers = false;    // Stops the bot from building pillar stacks
+    bot.pathfinder.setMovements(defaultMovements);
+
+    // Pick a completely random target destination within a 20-block walking radius from its current position
+    const currentPos = bot.entity.position;
+    const randomX = currentPos.x + (Math.floor(Math.random() * 41) - 20);
+    const randomZ = currentPos.z + (Math.floor(Math.random() * 41) - 20);
+
+    console.log(`AI calculating safe pathway vectors toward coordinates: X:${Math.floor(randomX)}, Z:${Math.floor(randomZ)}`);
+    
+    // Commands the bot to execute path calculations to reach the coordinate safely
+    bot.pathfinder.setGoal(new GoalXZ(randomX, randomZ));
+
+    // Wait until the bot completes its pathing goal, then pick a fresh set of coordinates to loop forever
+    bot.once('goal_reached', () => {
+        console.log("Destination reached cleanly. Pausing briefly before searching next safe sector...");
         setTimeout(() => {
-            if (!bot.setControlState) return;
-            bot.setControlState('jump', false);
-            bot.setControlState('back', true);
-            
-            setTimeout(() => {
-                if (!bot.setControlState) return;
-                bot.setControlState('back', false);
-                startMacroLoop(bot);
-            }, 2000);
-        }, 1000);
-    }, 2000);
+            startAIExploreLoop(bot);
+        }, 4000); // Rests for 4 seconds at the destination to look completely human
+    });
 }
 
-// Start the initial bot lifecycle
 createBotInstance();
 
-// Keep-alive tracker to anchor GitHub runner processes
 setInterval(() => {
-    console.log("Keep-alive baseline stable.");
+    console.log("Keep-alive infrastructure tracking nominal.");
 }, 10000);
