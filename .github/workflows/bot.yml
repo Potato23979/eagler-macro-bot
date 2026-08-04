@@ -1,4 +1,4 @@
-name: 24_7fred
+name: 24/7 Eaglercraft Macro Player
 
 on:
   push:
@@ -17,15 +17,9 @@ jobs:
       run: |
         curl -fsSL https://mccteam.github.io/install.sh | bash
 
-    - name: Generate and Update Settings
-      run: |
-        # 1. Run MCC for a split second to auto-generate the official configuration file layout
-        ./MinecraftClient "" "" "" "" --help || true
-        
-        # 2. Forcefully replace the account type and version to fix the connection security
-        sed -i 's/account_type = ".*"/account_type = "Offline"/' MinecraftClient.ini
-        sed -i 's/mcversion = ".*"/mcversion = "1.12.2"/' MinecraftClient.ini
-
     - name: Launch Free Macro Bot
       run: |
+        # Force the version setting down to 1.12.2 by generating an internal configuration file natively
+        echo -e "[Main]\nmcversion=1.12.2\naccount_type=Offline" > MinecraftClient.ini
+        
         ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
