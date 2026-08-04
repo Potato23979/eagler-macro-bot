@@ -26,4 +26,4 @@ jobs:
     - name: Launch Free Macro Bot
       run: |
         export PATH=$PATH:$HOME/.dotnet/tools
-        MinecraftConsoleClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
