@@ -1,9 +1,14 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const GoalLookAtBlock = goals.GoalLookAtBlock;
+const GoalXZ = goals.GoalXZ;
+
+// Persistent long-distance targets to stop back-and-forth pacing loops
+let travelGoalX = null;
+let travelGoalZ = null;
 
 function createBotInstance() {
-    console.log("Launching Smooth Stutter-Free Survival AI...");
+    console.log("Launching Long-Distance Explorer AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -22,7 +27,9 @@ function createBotInstance() {
             setTimeout(() => {
                 bot.chat('/login PotatoBotPassword77!');
                 setTimeout(() => {
-                    findAndChopTrees(bot);
+                    travelGoalX = null; // Reset targets at launch
+                    travelGoalZ = null;
+                    mainAILoop(bot);
                 }, 3000);
             }, 3000);
         }, 3000);
@@ -34,57 +41,79 @@ function createBotInstance() {
     });
 }
 
-function findAndChopTrees(bot) {
+function mainAILoop(bot) {
     if (!bot || !bot.pathfinder) return;
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
     
-    // Smooth navigation settings to force uninterrupted pathing loops
+    // Maximize fluid movement speed
     movements.canDig = false;
     movements.allowSprinting = true; 
     bot.pathfinder.setMovements(movements);
 
-    // Scan for the single closest log block within 20 blocks
-    const target = bot.findBlock({
+    // 1. SCAN FOR TREES: Check a slightly wider 25-block radar for wood logs
+    const treeBlock = bot.findBlock({
         matching: (block) => {
             const name = block.name.toLowerCase();
             return name === 'log' || name === 'log2' || name.includes('wood') || name.includes('log');
         },
-        maxDistance: 20
+        maxDistance: 25
     });
 
-    if (target) {
-        console.log(`Smooth path locked onto log at: ${target.position}`);
-        
-        // Command native pathfinder to navigate straight to the block seamlessly without stuttering
-        bot.pathfinder.setGoal(new GoalLookAtBlock(target.position, bot.world));
+    // 2. RESOURCE FOUND ROUTINE: If wood is found, abandon the long journey to chop it
+    if (treeBlock) {
+        console.log(`Wood spotted! Pausing expedition to harvest log at: ${treeBlock.position}`);
+        travelGoalX = null; // Clear travel vectors to lock onto resource tracking
+        travelGoalZ = null;
 
-        // When the bot reaches the block, mine it using native arm swings
+        bot.pathfinder.setGoal(new GoalLookAtBlock(treeBlock.position, bot.world));
+
         bot.once('goal_reached', async () => {
-            console.log("Arrived at tree. Mining block...");
             try {
-                // Face the block and dig it continuously until it drops
-                await bot.lookAt(target.position.offset(0.5, 0.5, 0.5));
-                await bot.dig(target);
-                console.log("Block chopped cleanly!");
+                await bot.lookAt(treeBlock.position.offset(0.5, 0.5, 0.5));
+                await bot.dig(treeBlock);
+                console.log("Harvest complete.");
             } catch (err) {
-                console.log(`Mining interrupted: ${err.message}`);
+                console.log(`Mining skip: ${err.message}`);
             }
-            // Loop straight into the next tree with zero delays
-            setTimeout(() => findAndChopTrees(bot), 400);
+            setTimeout(() => mainAILoop(bot), 400);
         });
-    } else {
-        // Free-roaming explore path if no wood is visible
-        console.log("No wood in area. Exploring smoothly...");
-        const currentPos = bot.entity.position;
-        const randomX = currentPos.x + (Math.floor(Math.random() * 17) - 8);
-        const randomZ = currentPos.z + (Math.floor(Math.random() * 17) - 8);
-        
-        bot.pathfinder.setGoal(new goals.GoalXZ(randomX, randomZ));
-        bot.once('goal_reached', () => {
-            setTimeout(() => findAndChopTrees(bot), 1000);
-        });
+        return;
     }
+
+    // 3. SECTOR LONG-DISTANCE JOURNEY ROUTINE: If no wood is found, execute long travels
+    if (travelGoalX === null || travelGoalZ === null) {
+        const currentPos = bot.entity.position;
+        
+        // Pick a massive, sweeping target vector (between 80 and 150 blocks away in a random direction)
+        const angle = Math.random() * Math.PI * 2;
+        const distance = 80 + Math.floor(Math.random() * 70);
+        
+        travelGoalX = currentPos.x + Math.cos(angle) * distance;
+        travelGoalZ = currentPos.z + Math.sin(angle) * distance;
+        
+        console.log(`No wood found. Initiating continuous long-distance expedition toward coordinates: X:${Math.floor(travelGoalX)}, Z:${Math.floor(travelGoalZ)}`);
+    }
+
+    // Force pathfinder to continuously move toward the far target coordinate without stopping
+    bot.pathfinder.setGoal(new GoalXZ(travelGoalX, travelGoalZ));
+
+    // Monitor environment changes smoothly while walking
+    setTimeout(() => {
+        // If the bot reached its massive travel coordinates, clear them so it chooses a new horizon
+        const currentPos = bot.entity.position;
+        const distanceRemaining = Math.sqrt(Math.pow(currentPos.x - travelGoalX, 2) + Math.pow(currentPos.z - travelGoalZ, 2));
+        
+        if (distanceRemaining < 4) {
+            console.log("Arrived safely at far coordinates sector limits. Refreshing charts...");
+            travelGoalX = null;
+            travelGoalZ = null;
+        }
+
+        // Keep running the main tracking engine loops
+        mainAILoop(bot);
+    }, 1500); // Scans the environment every 1.5 seconds while maintaining forward velocity
 }
 
 createBotInstance();
+
