@@ -8,7 +8,7 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching Resource-Collecting Explorer AI...");
+    console.log("Launching Advanced Column-Bridging Survival AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -38,14 +38,11 @@ function createBotInstance() {
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected or kicked. Waiting 30 seconds to bypass proxy bans...");
+        console.log("Bot disconnected or kicked. Reconnecting in 30 seconds...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
-        
-        setTimeout(() => {
-            createBotInstance();
-        }, 30000);
+        setTimeout(() => createBotInstance(), 30000);
     });
 }
 
@@ -54,14 +51,22 @@ function mainAILoop(bot) {
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
     
+    // PERMISSIONS UPGRADE: Allow the bot to dig blocks out of its way and place bridging columns
     movements.canDig = true;
     movements.allowSprinting = true; 
+    
+    // Fetch usable block IDs from inventory to allow jumping/bridging scaffolding mechanics
+    const items = bot.inventory.items();
+    const buildingBlocks = items.filter(i => i.name === 'dirt' || i.name === 'cobblestone' || i.name.includes('planks'));
+    if (buildingBlocks.length > 0) {
+        movements.scafoldingBlocks = buildingBlocks.map(i => i.type);
+    }
+    
     bot.pathfinder.setMovements(movements);
 
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
     const treeBlock = bot.findBlock({
-        // FIXED RADAR: Explicitly maps true Minecraft log types to prevent hitting dirt or stone
         matching: (block) => {
             const name = block.name.toLowerCase();
             return name === 'log' || name === 'log2' || name === 'oak_log' || name === 'spruce_log' || name === 'birch_log' || name === 'jungle_log' || name === 'acacia_log' || name === 'dark_oak_log';
