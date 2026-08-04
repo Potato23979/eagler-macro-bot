@@ -8,36 +8,35 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching Stable Progression and Escape AI...");
+    console.log("Launching Bypassed Stable Progression AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
         username: 'MacroBot247',
-        version: '1.12.2'
+        version: '1.12.2',
+        // FIXED: Wait for the network stream to settle before spamming packets
+        waitTimeout: 15000,
+        checkTimeoutInterval: 30000
     });
 
     bot.loadPlugin(pathfinder);
 
-    bot.on('spawn', () => {
-        console.log("SUCCESS: Autonomous survival agent active.");
-        bot.physics.enabled = true;
+    // FIXED: Run authentication on 'login' (handshake approved) instead of 'spawn' to clear proxy gates safely
+    bot.once('login', () => {
+        console.log("Proxy cleared! Handshake accepted by Eagler.Host.");
         
-        bot.clearControlStates();
-        travelGoalX = null; 
-        travelGoalZ = null;
-
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
             setTimeout(() => {
                 bot.chat('/login PotatoBotPassword77!');
                 setTimeout(() => {
+                    bot.physics.enabled = true;
                     mainAILoop(bot);
                 }, 3000);
             }, 3000);
-        }, 3000);
+        }, 4000); // 4-second human typing simulation delay
     });
 
-    // FIXED FORMAT CONDITION: Uses a safe comparison to prevent web text glitches
     bot.on('health', () => {
         if (20 > bot.health) {
             console.log("Taking damage! Actively escaping coordinates...");
@@ -52,12 +51,18 @@ function createBotInstance() {
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected. Reconnecting in 30 seconds...");
+        console.log("Bot disconnected. Waiting 45 seconds to let proxy blocks cool down...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
-        setTimeout(() => createBotInstance(), 30000);
+        
+        // Increased cooldown to safely shed any IP flags on the server proxy
+        setTimeout(() => {
+            createBotInstance();
+        }, 45000);
     });
+
+    bot.on('error', (err) => console.log(`Proxy connection rejected: ${err.message}`));
 }
 
 async function mainAILoop(bot) {
@@ -188,5 +193,4 @@ async function mainAILoop(bot) {
 }
 
 createBotInstance();
-
 
