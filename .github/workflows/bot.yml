@@ -1,4 +1,4 @@
-name: 24/7Jeff
+name: 24_7Jeff
 
 on:
   push:
@@ -19,4 +19,4 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt" -o
+        ./MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt" --Main.account_type=Offline
