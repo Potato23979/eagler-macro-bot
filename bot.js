@@ -12,7 +12,7 @@ bot.on('spawn', () => {
     
     // Automatically runs your in-game authentication password
     setTimeout(() => {
-        bot.chat('/login YourSecretBotPassword123');
+        bot.chat('/register YourSecretBotPassword123');
         startMacroLoop();
     }, 3000);
 });
