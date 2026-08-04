@@ -1,4 +1,4 @@
-name: 24_7Jeff
+name: 24/7Jeff
 
 on:
   push:
@@ -17,14 +17,6 @@ jobs:
       run: |
         curl -fsSL https://mccteam.github.io/install.sh | bash
 
-    - name: Force Version Overrides
-      run: |
-        # Generates a settings file forcing the tool to skip autodetect and use 1.12.2 protocols
-        cat << 'EOF' > MinecraftClient.ini
-        [Main]
-        mcversion = 1.12.2
-        EOF
-
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt"
+        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt" --Main.mcversion=1.12.2
