@@ -6,10 +6,9 @@ const GoalXZ = goals.GoalXZ;
 let travelGoalX = null;
 let travelGoalZ = null;
 let activeLoopTimeout = null;
-let combatTarget = null;
 
 function createBotInstance() {
-    console.log("Launching Comprehensive Survival and Defense AI Agent...");
+    console.log("Launching Stable Progression and Escape AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -26,7 +25,6 @@ function createBotInstance() {
         bot.clearControlStates();
         travelGoalX = null; 
         travelGoalZ = null;
-        combatTarget = null;
 
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -39,50 +37,31 @@ function createBotInstance() {
         }, 3000);
     });
 
+    // FIXED FORMAT CONDITION: Uses a safe comparison to prevent web text glitches
     bot.on('health', () => {
-        if (combatTarget) return; 
-        
-        const attacker = bot.nearestEntity((entity) => {
-            return (entity.type === 'mob' || entity.type === 'player') && entity.username !== bot.username;
-        });
-
-        if (attacker && bot.entity.position.distanceTo(attacker.position) < 5) {
-            console.log("ALERT: Under attack! Engaging self-defense sequence...");
-            combatTarget = attacker;
-            executeDefensiveCombat(bot);
+        if (20 > bot.health) {
+            console.log("Taking damage! Actively escaping coordinates...");
+            travelGoalX = null;
+            travelGoalZ = null;
+            
+            const escapeX = bot.entity.position.x + (Math.floor(Math.random() * 31) - 15);
+            const escapeZ = bot.entity.position.z + (Math.floor(Math.random() * 31) - 15);
+            
+            bot.pathfinder.setGoal(new GoalXZ(escapeX, escapeZ));
         }
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected. Waiting 30 seconds to bypass bans...");
+        console.log("Bot disconnected. Reconnecting in 30 seconds...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
-        combatTarget = null;
         setTimeout(() => createBotInstance(), 30000);
     });
 }
 
-function executeDefensiveCombat(bot) {
-    if (!bot || !combatTarget) return;
-    
-    const distance = bot.entity.position.distanceTo(combatTarget.position);
-    
-    if (combatTarget.health <= 0 || distance > 16) {
-        console.log("Threat neutralized. Returning to normal cycles.");
-        combatTarget = null;
-        bot.pathfinder.setGoal(null);
-        mainAILoop(bot);
-        return;
-    }
-    
-    bot.lookAt(combatTarget.position.offset(0, 1.6, 0));
-    
-    if (bot.health  executeDefensiveCombat(bot), 300);
-}
-
 async function mainAILoop(bot) {
-    if (!bot || !bot.pathfinder || combatTarget) return; 
+    if (!bot || !bot.pathfinder) return;
     
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
@@ -100,7 +79,7 @@ async function mainAILoop(bot) {
     const pickaxe = items.find(item => item.name.includes('pickaxe'));
 
     if (logs.length > 0 && (!planks || planks.count < 8) && !pickaxe) {
-        console.log("Refining raw wood logs into planks...");
+        console.log("Refining wood...");
         const targetPlankId = mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id;
         const plankRecipe = bot.recipesFor(targetPlankId, null, 1, null);
         if (plankRecipe) { try { await bot.craft(plankRecipe, 2, null); } catch (e) {} }
@@ -109,7 +88,7 @@ async function mainAILoop(bot) {
     }
 
     if (planks && planks.count >= 4 && !tableItem && !pickaxe) {
-        console.log("Assembling Crafting Table unit...");
+        console.log("Crafting table...");
         const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null);
         if (tableRecipe) { try { await bot.craft(tableRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
@@ -117,7 +96,7 @@ async function mainAILoop(bot) {
     }
 
     if (planks && planks.count >= 2 && !sticks && !pickaxe) {
-        console.log("Shaping wooden handles...");
+        console.log("Crafting sticks...");
         const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null);
         if (stickRecipe) { try { await bot.craft(stickRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
@@ -143,8 +122,7 @@ async function mainAILoop(bot) {
                         const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null);
                         if (pickaxeRecipe) {
                             await bot.craft(pickaxeRecipe, 1, placedTable);
-                            bot.chat("Look! I crafted a Wooden Pickaxe completely autonomously!");
-                            
+                            bot.chat("Successfully gathered wood and crafted a Wooden Pickaxe completely autonomously!");
                             setTimeout(() => {
                                 bot.dig(placedTable).then(() => mainAILoop(bot)).catch(() => mainAILoop(bot));
                             }, 2000);
@@ -154,9 +132,7 @@ async function mainAILoop(bot) {
                     mainAILoop(bot);
                 }, 2000);
                 return;
-            } catch (err) {
-                console.log(`Crafting placement error: ${err.message}`);
-            }
+            } catch (err) { console.log(`Table placement error: ${err.message}`); }
         }
     }
 
@@ -180,22 +156,9 @@ async function mainAILoop(bot) {
                 try {
                     bot.pathfinder.setGoal(null);
                     bot.clearControlStates();
-                    
                     await bot.lookAt(treeBlock.position.offset(0.5, 0.5, 0.5));
                     await bot.dig(treeBlock);
-                    
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                    const droppedItem = bot.nearestEntity((entity) => {
-                        return entity.type === 'object' && bot.entity.position.distanceTo(entity.position) < 4;
-                    });
-
-                    if (droppedItem) {
-                        bot.pathfinder.setGoal(new GoalXZ(droppedItem.position.x, droppedItem.position.z));
-                        await new Promise(resolve => bot.once('goal_reached', resolve));
-                    }
-                } catch (err) {
-                    console.log(`Mining skipped: ${err.message}`);
-                }
+                } catch (err) {}
                 activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1000);
             });
             return;
@@ -209,24 +172,21 @@ async function mainAILoop(bot) {
         
         travelGoalX = currentPos.x + Math.cos(angle) * distance;
         travelGoalZ = currentPos.z + Math.sin(angle) * distance;
-        
-        console.log(`Expedition active. Heading out toward coordinates: X:${Math.floor(travelGoalX)}, Z:${Math.floor(travelGoalZ)}`);
+        console.log(`Expedition active. Moving toward: X:${Math.floor(travelGoalX)}, Z:${Math.floor(travelGoalZ)}`);
     }
 
     bot.pathfinder.setGoal(new GoalXZ(travelGoalX, travelGoalZ));
 
     activeLoopTimeout = setTimeout(() => {
         const currentPos = bot.entity.position;
-        const distanceRemaining = Math.sqrt(Math.pow(currentPos.x - travelGoalX, 2) + Math.pow(currentPos.z - travelGoalZ, 2));
-        
-        if (distanceRemaining < 4) {
+        if (Math.sqrt(Math.pow(currentPos.x - travelGoalX, 2) + Math.pow(currentPos.z - travelGoalZ, 2)) < 4) {
             travelGoalX = null;
             travelGoalZ = null;
         }
-
         mainAILoop(bot);
     }, 2000); 
 }
 
 createBotInstance();
+
 
