@@ -3,8 +3,11 @@ const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const collectBlock = require('mineflayer-collectblock').plugin;
 const GoalXZ = goals.GoalXZ;
 
+let activeTimeout = null;
+let combatTarget = null;
+
 function createBotInstance() {
-    console.log("Launching Fully Autonomous Exploration AI...");
+    console.log("Launching Self-Defending Eaglercraft Survival AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -16,7 +19,8 @@ function createBotInstance() {
     bot.loadPlugin(collectBlock);
 
     bot.on('spawn', () => {
-        console.log("SUCCESS: Autonomous player initialized.");
+        console.log("SUCCESS: Autonomous defender active.");
+        bot.physics.enabled = true;
         
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -29,91 +33,114 @@ function createBotInstance() {
         }, 3000);
     });
 
+    // ADVANCED COMBAT RADAR: Triggers the second the bot takes damage
+    bot.on('health', () => {
+        // If health dropped and the bot has an attacker nearby, lock onto them
+        if (bot.combat && bot.combat.target) return; 
+        
+        // Find the closest hostile entity or player that just hit the bot
+        const attacker = bot.nearestEntity((entity) => {
+            return (entity.type === 'mob' || entity.type === 'player') && entity.username !== bot.username;
+        });
+
+        if (attacker && bot.entity.position.distanceTo(attacker.position) < 5) {
+            console.log(`ALERT: Taking damage! Target locked onto attacker: ${attacker.username || attacker.name}`);
+            combatTarget = attacker;
+            executeDefensiveCombat(bot);
+        }
+    });
+
     bot.on('end', () => {
+        if (activeTimeout) clearTimeout(activeTimeout);
+        combatTarget = null;
         setTimeout(() => createBotInstance(), 5000);
     });
 }
 
+function executeDefensiveCombat(bot) {
+    if (!bot || !combatTarget) return;
+
+    // Check if the enemy died or ran away
+    if (combatTarget.health  16) {
+        console.log("Threat neutralized or lost. Returning to survival gathering loop.");
+        combatTarget = null;
+        bot.pathfinder.setGoal(null);
+        survivalCycleLoop(bot);
+        return;
+    }
+
+    // 1. Look directly at the enemy's head
+    bot.lookAt(combatTarget.position.offset(0, 1.6, 0));
+
+    // 2. Tactical Retreat: If bot health drops below half (10 HP), run backward while fighting
+    if (bot.health  executeDefensiveCombat(bot), 300);
+}
+
 async function survivalCycleLoop(bot) {
     if (!bot) return;
+    if (combatTarget) return; // Freeze survival gathering tasks if actively fighting
+    
     const mcData = require('minecraft-data')(bot.version);
-
-    // Track current inventory
     const items = bot.inventory.items();
-    const logs = items.filter(item => item.name.includes('log'));
+    const logs = items.filter(item => item.name === 'log' || item.name === 'log2' || item.name.includes('log'));
     const planks = items.find(item => item.name.includes('planks'));
     const sticks = items.find(item => item.name === 'stick');
     const tableItem = items.find(item => item.name === 'crafting_table');
     const pickaxe = items.find(item => item.name.includes('pickaxe'));
 
-    // Step 1: Chop wood if we don't have enough materials
+    if (activeTimeout) clearTimeout(activeTimeout);
+
+    activeTimeout = setTimeout(() => {
+        bot.pathfinder.setGoal(null);
+        setTimeout(() => survivalCycleLoop(bot), 1000);
+    }, 15000);
+
     if (logs.length === 0 && (!planks || planks.count < 8) && !pickaxe) {
-        console.log("Materials low. Gathering wood logs...");
         findAndChopTrees(bot);
         return;
     }
 
-    // Step 2: Refine logs into planks
     if (logs.length > 0 && (!planks || planks.count < 8) && !pickaxe) {
-        console.log("Refining raw logs into planks...");
-        const plankRecipe = bot.recipesFor(mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id, null, 1, null)[0];
-        if (plankRecipe) {
-            try { await bot.craft(plankRecipe, 2, null); } catch (e) {}
-        }
+        const targetPlankId = mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id;
+        const plankRecipe = bot.recipesFor(targetPlankId, null, 1, null);
+        if (plankRecipe) { try { await bot.craft(plankRecipe, 2, null); } catch (e) {} }
         setTimeout(() => survivalCycleLoop(bot), 1500);
         return;
     }
 
-    // Step 3: Craft a Crafting Table if we don't have one
     if (planks && planks.count >= 4 && !tableItem && !pickaxe) {
-        console.log("Crafting an official Crafting Table block...");
-        const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null)[0];
-        if (tableRecipe) {
-            try { await bot.craft(tableRecipe, 1, null); } catch (e) {}
-        }
+        const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null);
+        if (tableRecipe) { try { await bot.craft(tableRecipe, 1, null); } catch (e) {} }
         setTimeout(() => survivalCycleLoop(bot), 1500);
         return;
     }
 
-    // Step 4: Craft Sticks
     if (planks && planks.count >= 2 && !sticks && !pickaxe) {
-        console.log("Crafting sticks...");
-        const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null)[0];
-        if (stickRecipe) {
-            try { await bot.craft(stickRecipe, 1, null); } catch (e) {}
-        }
+        const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null);
+        if (stickRecipe) { try { await bot.craft(stickRecipe, 1, null); } catch (e) {} }
         setTimeout(() => survivalCycleLoop(bot), 1500);
         return;
     }
 
-    // Step 5: Place the Crafting Table on the ground and make tools
     if (tableItem && planks && sticks && !pickaxe) {
-        console.log("Finding a safe spot to place our Crafting Table...");
-        
-        // Find a solid ground block right next to the bot
         const groundBlock = bot.findBlock({
-            matching: (block) => block.name === 'grass_block' || block.name === 'dirt' || block.name === 'stone',
-            maxDistance: 3
+            matching: (block) => block.name === 'grass' || block.name === 'grass_block' || block.name === 'dirt' || block.name === 'stone',
+            maxDistance: 4
         });
 
         if (groundBlock) {
             try {
-                // Hold the table item and place it on top of the ground block
+                if (activeTimeout) clearTimeout(activeTimeout);
                 await bot.equip(mcData.itemsByName.crafting_table.id, 'hand');
                 await bot.placeBlock(groundBlock, new (require('vec3'))(0, 1, 0));
-                console.log("Crafting Table placed successfully!");
-
+                
                 setTimeout(async () => {
-                    // Find the newly placed table in the world
                     const placedTable = bot.findBlock({ matching: mcData.blocksByName.crafting_table.id, maxDistance: 4 });
                     if (placedTable) {
-                        const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null)[0];
+                        const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null);
                         if (pickaxeRecipe) {
                             await bot.craft(pickaxeRecipe, 1, placedTable);
-                            console.log("SUCCESS: Pickaxe crafted autonomously!");
-                            bot.chat("I successfully gathered resources and built a Wooden Pickaxe completely on my own!");
-                            
-                            // Break the table to pack it up and move on
+                            bot.chat("Successfully gathered wood and crafted a Wooden Pickaxe autonomously!");
                             setTimeout(() => {
                                 bot.collectBlock.collect(placedTable, () => survivalCycleLoop(bot));
                             }, 2000);
@@ -124,43 +151,50 @@ async function survivalCycleLoop(bot) {
                 }, 2000);
                 return;
             } catch (err) {
-                console.log(`Failed placement routine: ${err.message}`);
+                console.log(`Placement error encountered: ${err.message}`);
             }
         }
     }
 
-    // Default fallback: keep exploring/gathering
-    console.log("Maintaining status loop. Moving to gather...");
     findAndChopTrees(bot);
 }
 
 function findAndChopTrees(bot) {
+    if (!bot || !bot.collectBlock || combatTarget) return;
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
+    
     movements.canDig = false;
     bot.pathfinder.setMovements(movements);
 
     const targets = bot.findBlocks({
-        matching: (block) => block.name.includes('log') || block.name.includes('wood'),
+        matching: (block) => {
+            const name = block.name.toLowerCase();
+            return name === 'log' || name === 'log2' || name.includes('wood') || name.includes('log');
+        },
         maxDistance: 32,
         count: 1
     });
 
     if (targets.length > 0) {
         const targetBlock = bot.blockAt(targets);
+        if (activeTimeout) clearTimeout(activeTimeout);
+        
         bot.collectBlock.collect(targetBlock, (err) => {
             setTimeout(() => survivalCycleLoop(bot), 2000);
         });
     } else {
         const currentPos = bot.entity.position;
-        const randomX = currentPos.x + (Math.floor(Math.random() * 21) - 10);
-        const randomZ = currentPos.z + (Math.floor(Math.random() * 21) - 10);
+        const randomX = currentPos.x + (Math.floor(Math.random() * 25) - 12);
+        const randomZ = currentPos.z + (Math.floor(Math.random() * 25) - 12);
+        
+        if (activeTimeout) clearTimeout(activeTimeout);
+        
         bot.pathfinder.setGoal(new GoalXZ(randomX, randomZ));
         bot.once('goal_reached', () => {
-            setTimeout(() => survivalCycleLoop(bot), 3000);
+            setTimeout(() => survivalCycleLoop(bot), 2000);
         });
     }
 }
 
 createBotInstance();
-
