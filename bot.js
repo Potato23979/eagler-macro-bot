@@ -11,10 +11,10 @@ function createBotInstance() {
     console.log("Launching Native Websocket Eaglercraft Agent...");
     
     const bot = mineflayer.createBot({
-        // Changes the host to pass raw browser packets directly down the line
+        // Automatically injects your exact server address safely into the web protocol layout
         connect: (client) => {
             const WebSocket = require('ws');
-            return new WebSocket('ws://Potatos-andFries.Eagler.Host');
+            return new WebSocket('wss://potatos-andfries.eagler.host');
         },
         username: 'Fredbot', 
         version: '1.12.2'
