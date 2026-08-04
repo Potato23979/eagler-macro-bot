@@ -19,4 +19,4 @@ jobs:
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt" --Main.mcversion=1.12.2
+        ./MinecraftClient "MacroBot247" "-" "Potatos-andFries.Eagler.Host" "tasks.txt" --Main:mcversion=1.12.2
