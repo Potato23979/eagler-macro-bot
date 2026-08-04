@@ -8,7 +8,7 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching Advanced Column-Bridging Survival AI...");
+    console.log("Launching Infinite Gathering Survival AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -38,7 +38,7 @@ function createBotInstance() {
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected or kicked. Reconnecting in 30 seconds...");
+        console.log("Bot disconnected or kicked. Waiting 30 seconds to bypass proxy bans...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
@@ -51,11 +51,9 @@ function mainAILoop(bot) {
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
     
-    // PERMISSIONS UPGRADE: Allow the bot to dig blocks out of its way and place bridging columns
     movements.canDig = true;
     movements.allowSprinting = true; 
     
-    // Fetch usable block IDs from inventory to allow jumping/bridging scaffolding mechanics
     const items = bot.inventory.items();
     const buildingBlocks = items.filter(i => i.name === 'dirt' || i.name === 'cobblestone' || i.name.includes('planks'));
     if (buildingBlocks.length > 0) {
@@ -66,6 +64,7 @@ function mainAILoop(bot) {
 
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
+    // FIXED SEARCH: This radar now stays fully active even if his inventory is completely full of items!
     const treeBlock = bot.findBlock({
         matching: (block) => {
             const name = block.name.toLowerCase();
