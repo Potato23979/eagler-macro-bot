@@ -1,4 +1,4 @@
-name: 24/7 Eaglercraft Macro Player
+name: 24/7-Eaglercraft-Macro-Player
 
 on:
   push:
@@ -18,8 +18,8 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Mineflayer Framework
-      run: npm install mineflayer
+    - name: Install Mineflayer and AI Pathfinder
+      run: npm install mineflayer mineflayer-pathfinder
 
     - name: Launch Free Macro Bot
       run: node bot.js
