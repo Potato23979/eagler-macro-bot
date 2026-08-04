@@ -45,7 +45,7 @@ function startMacroLoop(bot) {
     bot.setControlState('forward', true);
     setTimeout(() => {
         if (!bot.setControlState) return;
-        bot.setControlState('forward', false);
+        bot.setControlState('forward', true);
         bot.setControlState('jump', true);
         
         setTimeout(() => {
