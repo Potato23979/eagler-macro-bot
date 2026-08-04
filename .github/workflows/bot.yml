@@ -19,7 +19,7 @@ jobs:
         node-version: '18'
 
     - name: Install Mineflayer and AI Pathfinder
-      run: npm install mineflayer mineflayer-pathfinder
+      run: npm install mineflayer mineflayer-pathfinder mineflayer-collectblock
 
     - name: Launch Free Macro Bot
       run: node bot.js
