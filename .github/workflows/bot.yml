@@ -13,18 +13,11 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Set up .NET Runtime
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Install Minecraft Console Client
+    - name: Download Minecraft Console Client
       run: |
-        dotnet tool install --global MinecraftConsoleClient.Tool --version 1.21.0 || true
+        wget -q -O mcc https://github.com/MCCTeam/Minecraft-Console-Client/releases/latest/download/MinecraftClient-Linux-zip-x64
+        chmod +x mcc
 
     - name: Launch Free Macro Bot
       run: |
-        $HOME/.dotnet/tools/mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
-
-        export PATH=$PATH:$HOME/.dotnet/tools
-        mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./mcc "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
