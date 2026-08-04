@@ -1,5 +1,6 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+const eaglercraft = require('mineflayer-eaglercraft');
 const GoalLookAtBlock = goals.GoalLookAtBlock;
 const GoalXZ = goals.GoalXZ;
 
@@ -8,22 +9,20 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 
 function createBotInstance() {
-    console.log("Launching Bypassed Stable Progression AI...");
+    console.log("Launching True Eaglercraft Compatible Network Agent...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
-        username: 'MacroBot247',
+        username: 'Fredbot', // CHANGED: Updated your bot's name to Fredbot
         version: '1.12.2',
-        // FIXED: Wait for the network stream to settle before spamming packets
-        waitTimeout: 15000,
-        checkTimeoutInterval: 30000
+        transport: 'websocket',
+        eaglercraft: true
     });
 
     bot.loadPlugin(pathfinder);
 
-    // FIXED: Run authentication on 'login' (handshake approved) instead of 'spawn' to clear proxy gates safely
     bot.once('login', () => {
-        console.log("Proxy cleared! Handshake accepted by Eagler.Host.");
+        console.log("SUCCESS: Web tunnel approved! Profile connected safely.");
         
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -34,35 +33,28 @@ function createBotInstance() {
                     mainAILoop(bot);
                 }, 3000);
             }, 3000);
-        }, 4000); // 4-second human typing simulation delay
+        }, 4000); 
     });
 
     bot.on('health', () => {
         if (20 > bot.health) {
-            console.log("Taking damage! Actively escaping coordinates...");
             travelGoalX = null;
             travelGoalZ = null;
-            
             const escapeX = bot.entity.position.x + (Math.floor(Math.random() * 31) - 15);
             const escapeZ = bot.entity.position.z + (Math.floor(Math.random() * 31) - 15);
-            
             bot.pathfinder.setGoal(new GoalXZ(escapeX, escapeZ));
         }
     });
 
     bot.on('end', () => {
-        console.log("Bot disconnected. Waiting 45 seconds to let proxy blocks cool down...");
+        console.log("Disconnected. Cycling connection protocols in 30 seconds...");
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
-        
-        // Increased cooldown to safely shed any IP flags on the server proxy
-        setTimeout(() => {
-            createBotInstance();
-        }, 45000);
+        setTimeout(() => createBotInstance(), 30000);
     });
 
-    bot.on('error', (err) => console.log(`Proxy connection rejected: ${err.message}`));
+    bot.on('error', (err) => console.log(`Handshake dropped: ${err.message}`));
 }
 
 async function mainAILoop(bot) {
@@ -84,7 +76,6 @@ async function mainAILoop(bot) {
     const pickaxe = items.find(item => item.name.includes('pickaxe'));
 
     if (logs.length > 0 && (!planks || planks.count < 8) && !pickaxe) {
-        console.log("Refining wood...");
         const targetPlankId = mcData.itemsByName.oak_planks ? mcData.itemsByName.oak_planks.id : mcData.itemsByName.planks.id;
         const plankRecipe = bot.recipesFor(targetPlankId, null, 1, null);
         if (plankRecipe) { try { await bot.craft(plankRecipe, 2, null); } catch (e) {} }
@@ -93,7 +84,6 @@ async function mainAILoop(bot) {
     }
 
     if (planks && planks.count >= 4 && !tableItem && !pickaxe) {
-        console.log("Crafting table...");
         const tableRecipe = bot.recipesFor(mcData.itemsByName.crafting_table.id, null, 1, null);
         if (tableRecipe) { try { await bot.craft(tableRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
@@ -101,7 +91,6 @@ async function mainAILoop(bot) {
     }
 
     if (planks && planks.count >= 2 && !sticks && !pickaxe) {
-        console.log("Crafting sticks...");
         const stickRecipe = bot.recipesFor(mcData.itemsByName.stick.id, null, 1, null);
         if (stickRecipe) { try { await bot.craft(stickRecipe, 1, null); } catch (e) {} }
         activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1500);
@@ -127,7 +116,6 @@ async function mainAILoop(bot) {
                         const pickaxeRecipe = bot.recipesFor(mcData.itemsByName.wooden_pickaxe.id, placedTable, 1, null);
                         if (pickaxeRecipe) {
                             await bot.craft(pickaxeRecipe, 1, placedTable);
-                            bot.chat("Successfully gathered wood and crafted a Wooden Pickaxe completely autonomously!");
                             setTimeout(() => {
                                 bot.dig(placedTable).then(() => mainAILoop(bot)).catch(() => mainAILoop(bot));
                             }, 2000);
@@ -137,7 +125,7 @@ async function mainAILoop(bot) {
                     mainAILoop(bot);
                 }, 2000);
                 return;
-            } catch (err) { console.log(`Table placement error: ${err.message}`); }
+            } catch (err) { console.log(`Table error: ${err.message}`); }
         }
     }
 
@@ -151,12 +139,9 @@ async function mainAILoop(bot) {
         });
 
         if (treeBlock) {
-            console.log(`Wood log spotted at: ${treeBlock.position}`);
             travelGoalX = null; 
             travelGoalZ = null;
-
             bot.pathfinder.setGoal(new GoalLookAtBlock(treeBlock.position, bot.world));
-
             bot.once('goal_reached', async () => {
                 try {
                     bot.pathfinder.setGoal(null);
@@ -174,10 +159,8 @@ async function mainAILoop(bot) {
         const currentPos = bot.entity.position;
         const angle = Math.random() * Math.PI * 2;
         const distance = 80 + Math.floor(Math.random() * 70);
-        
         travelGoalX = currentPos.x + Math.cos(angle) * distance;
         travelGoalZ = currentPos.z + Math.sin(angle) * distance;
-        console.log(`Expedition active. Moving toward: X:${Math.floor(travelGoalX)}, Z:${Math.floor(travelGoalZ)}`);
     }
 
     bot.pathfinder.setGoal(new GoalXZ(travelGoalX, travelGoalZ));
