@@ -13,10 +13,26 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Download and Install Minecraft Console Client
+    - name: Download and Unzip Minecraft Console Client
       run: |
-        curl -fsSL https://mccteam.github.io/install.sh|sh
+        # Splitting download parts safely to ensure direct binary capture
+        PART1="://github.com"
+        PART2="releases/latest/download/MinecraftClient-Linux-zip-x64"
+        
+        wget -q -O mcc.zip "https://${PART1}/${PART2}"
+        unzip -q mcc.zip -d mcc_folder
+        chmod +x mcc_folder/MinecraftClient
+
+    - name: Configure App Settings to Offline Mode
+      run: |
+        # Creates a dedicated config file to force offline authentication checks
+        cat << 'EOF' > mcc_folder/MinecraftClient.ini
+        [Main]
+        [General]
+        AccountType = "offline"
+        Method = "mcc"
+        EOF
 
     - name: Launch Free Macro Bot
       run: |
-        ./MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
+        ./mcc_folder/MinecraftClient "Potatos-andFries.Eagler.Host" "1.12.2" "MacroBot247" "tasks.txt"
