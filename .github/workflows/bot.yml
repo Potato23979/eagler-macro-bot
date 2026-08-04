@@ -18,8 +18,8 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Mineflayer and AI Pathfinder
-      run: npm install mineflayer mineflayer-pathfinder
+    - name: Install Mineflayer and Eagler Network Translator
+      run: npm install mineflayer mineflayer-pathfinder mineflayer-eaglercraft
 
     - name: Launch Free Macro Bot
       run: node bot.js
