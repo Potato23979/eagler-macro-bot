@@ -6,9 +6,10 @@ const GoalXZ = goals.GoalXZ;
 let travelGoalX = null;
 let travelGoalZ = null;
 let activeLoopTimeout = null;
+let isStunnedByDamage = false; // Prevents anti-cheat combat flags
 
 function createBotInstance() {
-    console.log("Launching Infinite Gathering Survival AI...");
+    console.log("Launching Anti-Cheat Safe Gathering AI...");
     
     const bot = mineflayer.createBot({
         host: 'Potatos-andFries.Eagler.Host',
@@ -25,6 +26,7 @@ function createBotInstance() {
         bot.clearControlStates();
         travelGoalX = null; 
         travelGoalZ = null;
+        isStunnedByDamage = false;
 
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
@@ -34,11 +36,25 @@ function createBotInstance() {
                     mainAILoop(bot);
                 }, 3000);
             }, 3000);
-        }, 3000);
+        }, 4000);
     });
 
-    bot.on('end', () => {
-        console.log("Bot disconnected or kicked. Waiting 30 seconds to bypass proxy bans...");
+    // FIX FOR DAMAGE KICK: Listen for damage updates to pause pathfinding 
+    bot.on('health', () => {
+        if (bot.health < 20) { // Triggered if health drops or falls
+            console.log("ALERT: Bot took damage! Backing off AI to allow natural knockback...");
+            isStunnedByDamage = true;
+            if (bot.pathfinder) bot.pathfinder.setGoal(null); // Abort aggressive goals instantly
+            
+            // Allow 1.5 seconds for vanilla physics before resuming mining engine
+            setTimeout(() => {
+                isStunnedByDamage = false;
+            }, 1500);
+        }
+    });
+
+    bot.on('end', (reason) => {
+        console.log(`Bot disconnected. Reason: ${reason}. Waiting 30s to reconnect...`);
         if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
         travelGoalX = null;
         travelGoalZ = null;
@@ -47,91 +63,101 @@ function createBotInstance() {
 }
 
 function mainAILoop(bot) {
-    if (!bot || !bot.pathfinder) return;
+    if (!bot || !bot.pathfinder || isStunnedByDamage) {
+        // If stunned or broken, check back in half a second
+        activeLoopTimeout = setTimeout(() => mainAILoop(bot), 500);
+        return;
+    }
+
     const mcData = require('minecraft-data')(bot.version);
     const movements = new Movements(bot, mcData);
     
     movements.canDig = true;
-    movements.allowSprinting = true; 
+    movements.allowSprinting = false; // ANTI-CHEAT FIX: Disable sprinting to stop fast-movement velocity checks
     
-    // FIX: Safely find inventory items and map them to correct Block IDs so pathfinder doesn't crash
     const items = bot.inventory.items();
     const buildingBlocks = items.filter(i => i.name === 'dirt' || i.name === 'cobblestone' || i.name.includes('planks'));
     if (buildingBlocks.length > 0) {
         const validatedIds = [];
         buildingBlocks.forEach(item => {
             const blockInfo = mcData.blocksByName[item.name];
-            if (blockInfo) {
-                validatedIds.push(blockInfo.id);
-            }
+            if (blockInfo) validatedIds.push(blockInfo.id);
         });
-        // Corrected spelling to 'scaffoldingBlocks' with double 'f'
         movements.scaffoldingBlocks = validatedIds;
     }
     
     bot.pathfinder.setMovements(movements);
-
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
-    // RADAR: Search for logs around the bot
+    // RADAR: Locate wood blocks
     const treeBlock = bot.findBlock({
         matching: (block) => {
             const name = block.name.toLowerCase();
             return name === 'log' || name === 'log2' || name === 'oak_log' || name === 'spruce_log' || name === 'birch_log' || name === 'jungle_log' || name === 'acacia_log' || name === 'dark_oak_log';
         },
-        maxDistance: 25
+        maxDistance: 20 // Reduced slightly to avoid sudden long-distance snaps
     });
 
-    if (treeBlock) {
-        console.log(`True Wood spotted at: ${treeBlock.position}`);
+    if (treeBlock && !isStunnedByDamage) {
+        console.log(`Targeting wood block at: ${treeBlock.position}`);
         travelGoalX = null; 
         travelGoalZ = null;
 
         bot.pathfinder.setGoal(new GoalLookAtBlock(treeBlock.position, bot.world));
 
         bot.once('goal_reached', async () => {
+            if (isStunnedByDamage) return;
             try {
                 bot.pathfinder.setGoal(null);
                 bot.clearControlStates();
                 
-                await bot.lookAt(treeBlock.position.offset(0.5, 0.5, 0.5));
+                // ANTI-CHEAT FIX: Add humanized coordinate offset variations so it doesn't look like a robot
+                const humanizedLook = treeBlock.position.offset(
+                    0.4 + Math.random() * 0.2, 
+                    0.4 + Math.random() * 0.2, 
+                    0.4 + Math.random() * 0.2
+                );
+                await bot.lookAt(humanizedLook);
                 await bot.dig(treeBlock);
-                console.log("Block broken! Initiating drop collection sequence...");
                 
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await new Promise(resolve => setTimeout(resolve, 600 + Math.floor(Math.random() * 300)));
                 
                 const droppedItem = bot.nearestEntity((entity) => {
                     return entity.type === 'object' && bot.entity.position.distanceTo(entity.position) < 4;
                 });
 
-                if (droppedItem) {
-                    console.log("Sucking up log drops...");
+                if (droppedItem && !isStunnedByDamage) {
                     bot.pathfinder.setGoal(new GoalXZ(droppedItem.position.x, droppedItem.position.z));
                     await new Promise(resolve => bot.once('goal_reached', resolve));
                 }
             } catch (err) {
-                console.log(`Mining or collection skipped: ${err.message}`);
+                console.log(`Mining action skipped: ${err.message}`);
             }
-            activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1000);
+            activeLoopTimeout = setTimeout(() => mainAILoop(bot), 1200); // Slower pause loop
         });
         return;
     }
 
-    // WANDERING LOGIC: If no logs are found, pick a random path to search
+    // WANDERING LOGIC: Choose human-like roaming paths
     if (travelGoalX === null || travelGoalZ === null) {
         const currentPos = bot.entity.position;
         const angle = Math.random() * Math.PI * 2;
-        const distance = 80 + Math.floor(Math.random() * 70);
+        const distance = 30 + Math.floor(Math.random() * 30); // Decreased distance to look less suspicious
         
         travelGoalX = currentPos.x + Math.cos(angle) * distance;
         travelGoalZ = currentPos.z + Math.sin(angle) * distance;
         
-        console.log(`Searching for forest tracks. Moving toward: X:${Math.floor(travelGoalX)}, Z:${Math.floor(travelGoalZ)}`);
+        // Simulating human head yaw check when changing directions
+        bot.look(angle, 0, false);
     }
 
-    bot.pathfinder.setGoal(new GoalXZ(travelGoalX, travelGoalZ));
+    if (!isStunnedByDamage) {
+        bot.pathfinder.setGoal(new GoalXZ(travelGoalX, travelGoalZ));
+    }
 
     activeLoopTimeout = setTimeout(() => {
+        if (isStunnedByDamage) return mainAILoop(bot);
+        
         const currentPos = bot.entity.position;
         const distanceRemaining = Math.sqrt(Math.pow(currentPos.x - travelGoalX, 2) + Math.pow(currentPos.z - travelGoalZ, 2));
         
@@ -141,8 +167,7 @@ function mainAILoop(bot) {
         }
 
         mainAILoop(bot);
-    }, 2000); 
+    }, 2500); 
 }
 
 createBotInstance();
-
