@@ -1,5 +1,7 @@
 const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
+const WebSocket = require('ws');
+const axios = require('axios'); // Used to read web data
 const GoalLookAtBlock = goals.GoalLookAtBlock;
 const GoalXZ = goals.GoalXZ;
 
@@ -8,25 +10,46 @@ let travelGoalZ = null;
 let activeLoopTimeout = null;
 let isStunnedByDamage = false;
 
-function createBotInstance() {
-    console.log("Launching Proxy-Bypass Gathering AI...");
+// Automated gateway finder for Eaglercraft hosts
+async function getEaglerWebSocket(webUrl) {
+    try {
+        console.log(`Scanning web host configuration for: ${webUrl}...`);
+        const formattedUrl = webUrl.startsWith('http') ? webUrl : `https://${webUrl}`;
+        const response = await axios.get(formattedUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+        });
+        
+        // Search the web page text for common hidden Eaglercraft address formats
+        const match = response.data.match(/(wss:\/\/[^\s"']+)/i);
+        if (match && match[1]) {
+            console.log(`Found direct game server gateway: ${match[1]}`);
+            return match[1];
+        }
+    } catch (e) {
+        console.log(`Web scrape diagnostic failed: ${e.message}`);
+    }
     
+    // Fallback: If scraper is blocked, try the standard hosting direct network protocol format
+    return `wss://${webUrl.replace('https://', '').replace('http://', '')}/server`;
+}
+
+async function createBotInstance() {
+    // Resolve the real game port address from the URL
+    const realWssUrl = await getEaglerWebSocket('Potatos-andFries.Eagler.Host');
+    console.log(`Opening game data pipeline via: ${realWssUrl}`);
+
+    const ws = new WebSocket(realWssUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Origin': 'https://eagler.host'
+        }
+    });
+
     const bot = mineflayer.createBot({
-        host: 'Potatos-andFries.Eagler.Host',
         username: 'MacroBot247',
         version: '1.12.2',
-        viewDistance: 'tiny', 
-        connect: (client) => {
-            if (client.setSocketOptions) {
-                client.setSocketOptions({
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept-Language': 'en-US,en;q=0.9',
-                        'Origin': 'https://eagler.host'
-                    }
-                });
-            }
-        }
+        stream: ws, // Link the extracted WebSocket stream directly to Mineflayer
+        viewDistance: 'tiny'
     });
 
     bot.loadPlugin(pathfinder);
@@ -69,6 +92,10 @@ function createBotInstance() {
         travelGoalX = null;
         travelGoalZ = null;
         setTimeout(() => createBotInstance(), 30000);
+    });
+
+    ws.on('error', (err) => {
+        console.log(`WebSocket Connection Failed: ${err.message}`);
     });
 }
 
@@ -175,10 +202,8 @@ function mainAILoop(bot) {
     }, 2500); 
 }
 
-// Start the bot core
 createBotInstance();
 
-// FIX FOR GREEN TICK SHUTDOWN: Infinite background loop keeps the GitHub Runner awake
 setInterval(() => {
     console.log("[Keep-Alive] Keeping GitHub Actions runner alive...");
 }, 60000);
