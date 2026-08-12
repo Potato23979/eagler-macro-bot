@@ -15,8 +15,7 @@ function createBotInstance() {
         host: 'Potatos-andFries.Eagler.Host',
         username: 'MacroBot247',
         version: '1.12.2',
-        // FIX FOR socketClosed: Emulate a real web browser connection to trick proxy firewalls
-        viewDistance: 'tiny', // Lower data footprint looks like standard Eaglercraft clients
+        viewDistance: 'tiny', 
         connect: (client) => {
             if (client.setSocketOptions) {
                 client.setSocketOptions({
@@ -41,7 +40,6 @@ function createBotInstance() {
         travelGoalZ = null;
         isStunnedByDamage = false;
 
-        // Humanized randomized delays for commands to dodge automated log scans
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
             setTimeout(() => {
@@ -177,5 +175,11 @@ function mainAILoop(bot) {
     }, 2500); 
 }
 
+// Start the bot core
 createBotInstance();
+
+// FIX FOR GREEN TICK SHUTDOWN: Infinite background loop keeps the GitHub Runner awake
+setInterval(() => {
+    console.log("[Keep-Alive] Keeping GitHub Actions runner alive...");
+}, 60000);
 
