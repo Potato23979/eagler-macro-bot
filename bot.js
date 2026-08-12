@@ -54,17 +54,26 @@ function mainAILoop(bot) {
     movements.canDig = true;
     movements.allowSprinting = true; 
     
+    // FIX: Safely find inventory items and map them to correct Block IDs so pathfinder doesn't crash
     const items = bot.inventory.items();
     const buildingBlocks = items.filter(i => i.name === 'dirt' || i.name === 'cobblestone' || i.name.includes('planks'));
     if (buildingBlocks.length > 0) {
-        movements.scafoldingBlocks = buildingBlocks.map(i => i.type);
+        const validatedIds = [];
+        buildingBlocks.forEach(item => {
+            const blockInfo = mcData.blocksByName[item.name];
+            if (blockInfo) {
+                validatedIds.push(blockInfo.id);
+            }
+        });
+        // Corrected spelling to 'scaffoldingBlocks' with double 'f'
+        movements.scaffoldingBlocks = validatedIds;
     }
     
     bot.pathfinder.setMovements(movements);
 
     if (activeLoopTimeout) clearTimeout(activeLoopTimeout);
 
-    // FIXED SEARCH: This radar now stays fully active even if his inventory is completely full of items!
+    // RADAR: Search for logs around the bot
     const treeBlock = bot.findBlock({
         matching: (block) => {
             const name = block.name.toLowerCase();
@@ -108,6 +117,7 @@ function mainAILoop(bot) {
         return;
     }
 
+    // WANDERING LOGIC: If no logs are found, pick a random path to search
     if (travelGoalX === null || travelGoalZ === null) {
         const currentPos = bot.entity.position;
         const angle = Math.random() * Math.PI * 2;
@@ -135,3 +145,4 @@ function mainAILoop(bot) {
 }
 
 createBotInstance();
+
