@@ -40,14 +40,12 @@ async function createBotInstance() {
         viewDistance: 'tiny'
     });
 
-    // Disable physics immediately on initialization
     bot.physics.enabled = false;
 
     bot.on('spawn', () => {
         console.log("SUCCESS: Bot successfully logged into the server.");
         bot.physics.enabled = false; 
 
-        // Authenticate with LoginSecurity
         setTimeout(() => {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
             setTimeout(() => {
@@ -57,13 +55,10 @@ async function createBotInstance() {
         }, 4000);
     });
 
-    // Keep-alive tracker inside Mineflayer to block Node.js from exiting
     bot.on('time', () => {
-        // This event fires every single in-game tick (20 times a second).
-        // It acts as a processing anchor forcing the server thread to stay occupied.
+        // Keeps Mineflayer listening actively to the server tick stream
     });
 
-    // Auto-reconnect loop if kicked or if the host reboots
     bot.on('end', (reason) => {
         console.log(`Bot disconnected. Reason: ${reason}. Reconnecting in 15 seconds...`);
         setTimeout(() => createBotInstance(), 15000);
@@ -76,8 +71,6 @@ async function createBotInstance() {
 
 createBotInstance();
 
-// Strict 10-second system clock loop. As long as this exists, Node.js cannot exit.
 setInterval(() => {
     console.log("[Status Tracker] Bot process is active. Holding server open...");
 }, 10000);
-
