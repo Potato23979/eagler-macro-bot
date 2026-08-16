@@ -5,12 +5,13 @@ on:
   push:
     branches: [ main ]
   schedule:
-    # Forces GitHub to check and re-run every 5 minutes if the old instance timed out
     - cron: '*/5 * * * *'
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    # This officially keeps the job running for up to 5 hours max before rotating cleanly
+    timeout-minutes: 330 
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -21,9 +22,8 @@ jobs:
         node-version: '18'
 
     - name: Install All Required Network Modules
-      # Cleaned up: only downloads the 3 core items required to sit still
       run: npm install mineflayer ws axios
 
     - name: Launch Free AFK Bot
-      # Runs for up to 5 and a half hours, then safely resets before hitting GitHub's crash timer
-      run: timeout 330m node bot.js || echo "Restarting workflow loop cleanly."
+      # Removed the timeout syntax loop that was causing the accidental success flag
+      run: node bot.js
