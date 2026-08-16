@@ -33,10 +33,13 @@ async function createBotInstance() {
         }
     });
 
+    // FIX: Convert the WebSocket into a stream that Mineflayer's internal code can use
+    const wsStream = WebSocket.createWebSocketStream(ws);
+
     const bot = mineflayer.createBot({
         username: 'MacroBot247',
         version: '1.12.2',
-        stream: ws, 
+        stream: wsStream, // Pass the wrapped stream here instead of the raw socket
         viewDistance: 'tiny'
     });
 
