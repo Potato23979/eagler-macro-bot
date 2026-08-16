@@ -1,11 +1,12 @@
-name: 24-7-Eaglercraft-Macro-Player
+name: 24-7-Eaglercraft-AFK-Player
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
   schedule:
-    - cron: '0 */6 * * *'
+    # Forces GitHub to check and re-run every 5 minutes if the old instance timed out
+    - cron: '*/5 * * * *'
 
 jobs:
   run-bot:
@@ -19,8 +20,10 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Mineflayer and AI Pathfinder
-      run: npm install mineflayer mineflayer-pathfinder
+    - name: Install All Required Network Modules
+      # Cleaned up: only downloads the 3 core items required to sit still
+      run: npm install mineflayer ws axios
 
-    - name: Launch Free Macro Bot
-      run: node bot.js
+    - name: Launch Free AFK Bot
+      # Runs for up to 5 and a half hours, then safely resets before hitting GitHub's crash timer
+      run: timeout 330m node bot.js || echo "Restarting workflow loop cleanly."
