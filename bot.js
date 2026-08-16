@@ -40,11 +40,11 @@ async function createBotInstance() {
         viewDistance: 'tiny'
     });
 
+    // Disable physics immediately on initialization
+    bot.physics.enabled = false;
+
     bot.on('spawn', () => {
         console.log("SUCCESS: Bot successfully logged into the server.");
-        
-        // Turn OFF gravity, collisions, and movement entirely. 
-        // The bot will just float still like an armor stand.
         bot.physics.enabled = false; 
 
         // Authenticate with LoginSecurity
@@ -52,9 +52,15 @@ async function createBotInstance() {
             bot.chat('/register PotatoBotPassword77! PotatoBotPassword77!');
             setTimeout(() => {
                 bot.chat('/login PotatoBotPassword77!');
-                console.log("Bot logged in and standing completely still 24/7.");
+                console.log("Bot logged in. Standing perfectly still.");
             }, 3000);
         }, 4000);
+    });
+
+    // Keep-alive tracker inside Mineflayer to block Node.js from exiting
+    bot.on('time', () => {
+        // This event fires every single in-game tick (20 times a second).
+        // It acts as a processing anchor forcing the server thread to stay occupied.
     });
 
     // Auto-reconnect loop if kicked or if the host reboots
@@ -70,7 +76,8 @@ async function createBotInstance() {
 
 createBotInstance();
 
+// Strict 10-second system clock loop. As long as this exists, Node.js cannot exit.
 setInterval(() => {
-    console.log("[Keep-Alive] Ensuring bot service stays online...");
-}, 60000);
+    console.log("[Status Tracker] Bot process is active. Holding server open...");
+}, 10000);
 
